@@ -1,0 +1,76 @@
+# general setting
+name: cuts
+backend: dp # DataParallel
+type: FMNetModel
+num_gpu: auto
+manual_seed: 1234
+refine: 15
+non-isometric: false
+partial: true
+visualize: true
+
+# path
+path:
+  resume_state: checkpoints/CUTS.pth
+  resume: false
+
+# datasets
+datasets:
+  test_dataset:
+    name: Val
+    type: PairShrec16geoDataset
+    cut_type: cuts
+    data_root:  ./wormhole/SHREC16/SHREC16_test/
+    return_evecs: true
+    return_faces: true
+    num_evecs: 200
+    return_corr: true
+    return_dist: true
+    is_train: False
+    return_mask: True
+    distance_folder: ./wormhole/SHREC16
+
+# network setting
+networks:
+  feature_extractor:
+    type: DiffusionNet
+    in_channels: 3
+    out_channels: 256
+    cache_dir:  ./wormhole/SHREC16/SHREC16/cuts/diffusion
+    input_type: xyz
+    use_normals: True
+  fmap_net:
+    type: RegularizedFMNet
+    bidirectional: false
+  permutation:
+    type: Similarity
+    tau: 0.01
+    hard: true
+
+# training setting
+train:
+  optims:
+    feature_extractor:
+      type: Adam
+      lr: 1.0e-3
+  schedulers:
+    feature_extractor:
+      type: none
+  losses:
+    geodesic_loss:
+      type: PartialGeodesicLoss
+      loss_weight: 1.0e+3
+    surfmnet_loss:
+      type: PartialOrthoLoss
+      w_orth: 1.0
+      w_lap: 0.0
+      w_mask: 0.0
+      w_pfm_mask: 0.0
+
+# validation setting
+val:
+  metrics:
+    geo_error:
+      type: calculate_geodesic_error
+    plot_pck:
+      type: plot_pck
